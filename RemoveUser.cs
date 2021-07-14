@@ -11,7 +11,7 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
     public static class RemoveUser
     {
         [FunctionName("RemoveUser")]
-         public static async Task<IActionResult> Run([TimerTrigger("0 0 4 * * *")]TimerInfo myTimer, ILogger log)
+         public static async Task Run([TimerTrigger("0 0 4 * * *")]TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             IConfiguration config = new ConfigurationBuilder()
@@ -25,13 +25,9 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
             var graphAPIAuth = auth.graphAuth(log);
             var result = await CheckMemberWelcome(graphAPIAuth, welcomeGroup, log);
 
-            if(result)
+            if(!result)
             {
-                return new OkObjectResult("Function run without issue");
-            }
-            else
-            {
-               return new BadRequestObjectResult("Something happen, please check the logs");
+               throw new SystemException("Something happen, please check the logs");
             }
         }
 
@@ -56,7 +52,7 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
                     DateTimeOffset UserDate = (DateTimeOffset)userInfo.CreatedDateTime;
                     int daysLeft = (DateTime.Today - UserDate).Days;
 
-                    if(daysLeft >= 14)
+                    if(daysLeft >= 1)
                     {
                         await graphServiceClient.Groups[WelcomeGroup].Members[user.Id].Reference
                             .Request()
@@ -66,11 +62,10 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
                     log.LogInformation($"{daysLeft}");
                 }
                 result = true;
-                log.LogInformation("User invite successfully");
             }
             catch (ServiceException ex)
             {
-                log.LogInformation($"Error Creating User Invite : {ex.Message}");
+                log.LogInformation($"Error check group : {ex.Message}");
                 result = false;
             };
         return result;
