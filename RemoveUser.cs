@@ -52,7 +52,7 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
                     DateTimeOffset UserDate = (DateTimeOffset)userInfo.CreatedDateTime;
                     int daysLeft = (DateTime.Today - UserDate).Days;
 
-                    if(daysLeft >= 1)
+                    if(daysLeft >= 14)
                     {
                         await graphServiceClient.Groups[WelcomeGroup].Members[user.Id].Reference
                             .Request()
