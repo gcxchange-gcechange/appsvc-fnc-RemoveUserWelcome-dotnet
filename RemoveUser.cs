@@ -41,7 +41,7 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
 
                     foreach (DirectoryObject user in groupMember)
                     {
-                        log.LogInformation("In userlist");
+                        log.LogInformation("In userlist"+user.Id);
                         var userInfo = await graphServiceClient.Users[user.Id].Request().Select("CreatedDateTime").GetAsync();
                         log.LogInformation($" user {userInfo.CreatedDateTime}");
 
