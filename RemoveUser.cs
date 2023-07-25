@@ -36,6 +36,7 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
             {
                 foreach (var groupid in WelcomeGroup)
                 {
+                    log.LogInformation(groupid);
                     var groupMember = await graphServiceClient.Groups[groupid].Members.Request().GetAsync();
 
                     foreach (DirectoryObject user in groupMember)
