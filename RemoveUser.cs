@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
@@ -36,22 +39,25 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
             {
                 foreach (var groupid in WelcomeGroup)
                 {
-                    var groupMember = await graphServiceClient.Groups[groupid].Members.Request().GetAsync();
-
-                    foreach (DirectoryObject user in groupMember)
+                    log.LogInformation("groupid "+groupid);
+                    var format = "yyyy-MM-ddTHH:mm:ssK";
+                    DateTime less14 = DateTime.UtcNow.AddDays(-14); //get formatdate of 14days ago
+                    log.LogInformation("Today less 14days is "+less14);
+                   
+                    var usersInGroup = await graphServiceClient.Groups[groupid].Members.GraphUser.GetAsync((requestConfiguration) =>
                     {
-                        var userInfo = await graphServiceClient.Users[user.Id].Request().Select("CreatedDateTime").GetAsync();
-                        log.LogInformation($" user {userInfo.CreatedDateTime}");
+                        requestConfiguration.QueryParameters.Count = true;
+                        requestConfiguration.QueryParameters.Select = new string[] { "CreatedDateTime", "Id" };
+                        requestConfiguration.QueryParameters.Filter = "createdDateTime le "+ less14.ToString(format); //Get all user that the creation date is older than 14 days ago.
+                        requestConfiguration.Headers.Add("ConsistencyLevel", "eventual");
+                    });
 
-                        DateTimeOffset UserDate = (DateTimeOffset)userInfo.CreatedDateTime;
-                        int daysLeft = (DateTime.Today - UserDate).Days;
+                    foreach(var user in usersInGroup.Value)
+                    {
+                        log.LogInformation("Info on deleted user. Id" + user.Id + "CreatedDateTime "+user.CreatedDateTime);
 
-                        if (daysLeft >= 14)
-                        {
-                            await graphServiceClient.Groups[groupid].Members[user.Id].Reference.Request().DeleteAsync();
-                            log.LogInformation("User remove");
-                        }
-                        log.LogInformation($"{daysLeft}");
+                        await graphServiceClient.Groups[groupid].Members[user.Id].Ref.DeleteAsync();
+
                     }
                 }
 
