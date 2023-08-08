@@ -54,25 +54,15 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
                         requestConfiguration.QueryParameters.Filter = "createdDateTime le "+ less14.ToString(format); //Get all user that the creation date is older than 14 days ago.
                         requestConfiguration.Headers.Add("ConsistencyLevel", "eventual");
                     });
-                    while (usersInGroup.OdataNextLink != null)
+
+                    var pageIterator = PageIterator<User, UserCollectionResponse>.CreatePageIterator(graphServiceClient, usersInGroup, async (user) =>
                     {
-                        log.LogInformation("Go to next?");
-                        var nextPageRequestInformation = new RequestInformation
-                        {
-                            HttpMethod = Method.GET,
-                            UrlTemplate = usersInGroup.OdataNextLink
-                        };
-
-                        usersInGroup = await graphServiceClient.RequestAdapter.SendAsync(nextPageRequestInformation, (parseNode) => new UserCollectionResponse());
-                    }
-
-                    foreach (var user in usersInGroup.Value)
-                    {
-                        log.LogInformation("Info on deleted user. Id" + user.Id + "CreatedDateTime "+user.CreatedDateTime);
-
+                        log.LogInformation("Info on deleted user. Id" + user.Id + " CreatedDateTime " + user.CreatedDateTime);
                         await graphServiceClient.Groups[groupid].Members[user.Id].Ref.DeleteAsync();
+                        return true;
+                    });
 
-                    }
+                    await pageIterator.IterateAsync();
                 }
 
                 result = true;
