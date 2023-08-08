@@ -8,6 +8,8 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
+using Microsoft.Graph.Models;
+using Microsoft.Kiota.Abstractions;
 
 namespace appsvc_fnc_RemoveUserWelcome_dotnet
 {
@@ -47,12 +49,24 @@ namespace appsvc_fnc_RemoveUserWelcome_dotnet
                     var usersInGroup = await graphServiceClient.Groups[groupid].Members.GraphUser.GetAsync((requestConfiguration) =>
                     {
                         requestConfiguration.QueryParameters.Count = true;
+                        requestConfiguration.QueryParameters.Top = 2; ///Get 999 user per call
                         requestConfiguration.QueryParameters.Select = new string[] { "CreatedDateTime", "Id" };
                         requestConfiguration.QueryParameters.Filter = "createdDateTime le "+ less14.ToString(format); //Get all user that the creation date is older than 14 days ago.
                         requestConfiguration.Headers.Add("ConsistencyLevel", "eventual");
                     });
+                    while (usersInGroup.OdataNextLink != null)
+                    {
+                        log.LogInformation("Go to next?");
+                        var nextPageRequestInformation = new RequestInformation
+                        {
+                            HttpMethod = Method.GET,
+                            UrlTemplate = usersInGroup.OdataNextLink
+                        };
 
-                    foreach(var user in usersInGroup.Value)
+                        usersInGroup = await graphServiceClient.RequestAdapter.SendAsync(nextPageRequestInformation, (parseNode) => new UserCollectionResponse());
+                    }
+
+                    foreach (var user in usersInGroup.Value)
                     {
                         log.LogInformation("Info on deleted user. Id" + user.Id + "CreatedDateTime "+user.CreatedDateTime);
 
